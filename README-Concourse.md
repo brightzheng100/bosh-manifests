@@ -240,7 +240,7 @@ Done!
 
 ### Retrieving Vault Values but Got Code: 403. Errors: permission denied
 
-*ERROR*
+**ERROR**
 ```
 Finding variable 'my-secret': Error making API request.
 
@@ -250,6 +250,7 @@ Code: 403. Errors:
 * permission denied
 ```
 
-*SOLUTION*
-BOSH SSH into `web` node to check the `atc` logs, it's proprably caused by wrong role_id/secret_id or they're expired.
+**SOLUTION**
+
+BOSH SSH into `web` node to check the `atc` logs, it's most likely caused by wrong role_id/secret_id or they're expired.
 
