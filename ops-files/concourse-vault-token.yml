@@ -1,0 +1,8 @@
+- type: replace
+  path: /instance_groups/name=web/jobs/name=atc/properties/vault?
+  value:
+    url: ((VAULT_ADDR))
+    path_prefix: ((CONCOURSE_VAULT_MOUNT))
+    auth:
+      params:
+        client_token: ((VAULT_CLIENT_TOKEN))

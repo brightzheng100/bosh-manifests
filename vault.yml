@@ -1,0 +1,60 @@
+---
+
+# Some parameters that can be set to spin up Vault
+# - VAULT_NW_NAME
+# - VAULT_STATIC_IP
+# - VAULT_VM_TYPE
+# - VAULT_AZ_NAME
+#
+# Sample CLI (given BOSH env=sandbox):
+# ```
+# $ bosh -e sandbox -d vault deploy vault.yml \
+#     -v VAULT_NW_NAME=network-z1-only \
+#     -v VAULT_STATIC_IP=10.0.100.10 \
+#     -v VAULT_VM_TYPE=small \
+#     -v VAULT_AZ_NAME=z1
+# ```
+
+
+name: vault
+
+instance_groups:
+- instances: 1
+  name: vault
+  networks: [
+    {
+      name: ((VAULT_NW_NAME)), 
+      static_ips: ((VAULT_STATIC_IP))
+    }
+  ]
+  persistent_disk: 4096
+  properties:
+    vault:
+      backend:
+        use_file: true
+      ha:
+        redirect: null
+  vm_type: ((VAULT_VM_TYPE))
+  stemcell: trusty
+  azs: [((VAULT_AZ_NAME))]
+  jobs:
+  - name: vault
+    release: vault
+
+releases:
+- name: vault
+  version: 0.6.2
+  url: https://bosh.io/d/github.com/cloudfoundry-community/vault-boshrelease?v=0.6.2
+  sha1: 36fd3294f756372ff9fbbd6dfac11fe6030d02f9
+
+stemcells:
+- alias: trusty
+  os: ubuntu-trusty
+  version: latest
+
+update:
+  canaries: 1
+  canary_watch_time: 1000-30000
+  max_in_flight: 50
+  serial: false
+  update_watch_time: 1000-30000
