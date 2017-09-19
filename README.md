@@ -3,7 +3,25 @@
 
 ## Preparation
 
-1. Create BOSH Director
+1. Prepare Infra
+
+The process is based on Google Cloud Platform (GCP).
+But as BOSH is the great platform to abstract the IaaSes, changing to another IaaS, for example AWS, is just a trivial thing to handle.
+
+What we need to prepare is:
+- VPC with subnet(s). In my example, my VPC is as below
+  * VPC Network: bosh-sandbox
+  * Subnet: bosh-releases
+  * Region: us-central1
+  * IP address range: 10.0.100.0/22
+- A Service Account with necessary Roles, for example:
+  * App Engine Admin
+  * Compute Instance Admin (v1)
+  * Compute Network Admin
+  * Compute Storage Admin
+- A Ubuntu Jumpbox (within the same VPC)
+
+2. Create BOSH Director
 
 ```
 $ git clone https://github.com/cloudfoundry/bosh-deployment
@@ -24,7 +42,7 @@ $ bosh create-env bosh-deployment/bosh.yml \
 ```
 
 
-2. Alias BOSH Env
+3. Alias BOSH Env
 
 ```
 $ bosh alias-env sandbox -e 10.0.100.6 --ca-cert <(bosh int ./creds.yml --path /director_ssl/ca)
@@ -44,20 +62,20 @@ $ bosh alias-env sandbox -e 10.0.100.6 --ca-cert <(bosh int ./creds.yml --path /
 ```
 
 
-3. Export & Login to the Director
+4. Export & Login to the Director
 ```
 $ export BOSH_CLIENT=admin && export BOSH_CLIENT_SECRET=`bosh int ./creds.yml --path /admin_password`
 ```
 
 
-4. Prepare & Update Cloud Config
+5. Prepare & Update Cloud Config
 
 ```
 $ bosh -e sandbox update-cloud-config cloud-config-gcp.yml
 ```
 
 
-5. Upload Stemcells
+6. Upload Stemcells
 
 ```
 $ bosh -e sandbox upload-stemcell stemcells/light-bosh-stemcell-3421.11-google-kvm-ubuntu-trusty-go_agent.tgz
