@@ -1,3 +1,22 @@
+---
+
+# Demo pipeline to test whether Vault works or not
+#
+# 1. Set variable to Vault
+# $ vault write concourse/main/vault-testing/my-secret value="Hello World"
+# $ vault read concourse/main/vault-testing/my-secret
+#     Key             	Value
+#     ---             	-----
+#     refresh_interval	768h0m0s
+#     value           	Hello World
+#
+# 2. Set pipeline
+# $ fly -t bosh set-pipeline -p vault-testing -c misc/vault-testing-pipeline.yml
+# $ fly -t bosh unpause-pipeline -p vault-testing
+# 
+# 3. Manually trigger the "hello-world" job and one should see:
+#   MY_SECRET is Hello World
+
 jobs:
 - name: hello-world
   plan:
