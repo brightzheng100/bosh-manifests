@@ -1,19 +1,28 @@
 # Concourse
 
-## Configure Vault Server
+Here we provide two integration implementations:
+- Concourse + Vault
+- Concourse + Credhub
 
-### Export VALUT_ADDR
+> Note: even the idea for both of the implementations is very similiar, I'd still separate the processes so that no confusion would be there.
+
+
+## Concourse + Vault
+
+### Configure Vault Server
+
+#### Export VALUT_ADDR
 
 `$ export VAULT_ADDR=http://10.0.100.10:8200 `
 
-### Create A Mount For Concourse
+#### Create A Mount For Concourse
 
 ```
 $ vault mount -path=/concourse -description="Secrets for concourse pipelines" generic
     Successfully mounted 'generic' at '/concourse'!
 ```
 
-### Create Policy File
+#### Create Policy File
 
 ```
 $ vi misc/vault-policy-concourse.hcl
@@ -23,7 +32,7 @@ $ vi misc/vault-policy-concourse.hcl
   }
 ```
 
-### Register Policy
+#### Register Policy
 
 ```
 $ vault policy-write policy-concourse misc/vault-policy-concourse.hcl
@@ -34,9 +43,9 @@ $ vault policies
     root
 ```
 
-### Choose An Authentication Method
+#### Choose An Authentication Method
 
-#### If Using appRole for Authentication (This is what I'm using)
+- If Using appRole for Authentication (This is what I'm using)
 
 1. Enable approle:
 ```
@@ -99,7 +108,7 @@ $ vault write auth/approle/login role_id=${ROLE_ID} secret_id=${SECRET_ID}
 Refre to `ops-files/concourse-vault-approle.yml`.
 
 
-#### If Using Periodic Token for Authentication
+- If Using Periodic Token for Authentication
 
 1. Initialize Vault and create a periodic token using the new policy:
 
@@ -131,12 +140,12 @@ $ vault token-create --policy=policy-concourse -period="600h" -format=json
 Refre to `ops-files/concourse-vault-token.yml`.
 
 
-## Deploy Concourse
+### Deploy Concourse
 
 ```
 $ bosh -e sandbox -d concourse deploy concourse.yml \
     -o ops-files/concourse-vault-approle.yml \
-    --vars-store _creds-concourse.yml \
+    --vars-store _creds-concourse_vault.yml \
     -v CONCOURSE_NW_NAME=network-z1-only \
     -v CONCOURSE_AZ_NAME=z1 \
     -v CONCOURSE_INTERNAL_IP=10.0.100.11 \
@@ -145,7 +154,10 @@ $ bosh -e sandbox -d concourse deploy concourse.yml \
     -v VAULT_ADDR=http://10.0.100.10:8200
 ```
 
-> Note: sample _creds-concourse.yml has below credential values:
+> Note: 
+- There has one-VM version of manifast named `concourse-allinone.yml`
+- The `_creds-concourse_vault.yml` has below credential values:
+
 ```
 ui_password: 
 postgres_password: 
@@ -162,10 +174,9 @@ vault_secret_id:
 #accessor: 
 ```
 
+### Deploy Concourse Pinelines
 
-## Deploy Concourse Pinelines
-
-### Populate Required Variables/Secrects
+#### Populate Required Variables/Secrects
 
 Credential Lookup Rules:
 - /concourse/TEAM_NAME/PIPELINE_NAME/foo_param
@@ -187,7 +198,7 @@ $ vault read concourse/main/vault-testing/my-secret
     value           	Hello World
 ```
 
-### Deploy Sample Pipeline
+#### Deploy Sample Pipeline
 
 1. Sample Pipeline
 
@@ -234,6 +245,165 @@ MY_SECRET is Hello World
 ```
 
 Done!
+
+
+
+## Concourse + Credhub
+
+### Create UAA Client for Credhub
+
+```
+$ uaac target https://10.0.100.6:8443 --skip-ssl-validation
+
+$ export UAA_ADMIN_CLIENT_SECRET=`bosh int ../creds.yml --path=/uaa_admin_client_secret`
+$ uaac token client get uaa_admin -s ${UAA_ADMIN_CLIENT_SECRET}
+
+$ uaac client delete concourse_client
+$ uaac client add concourse_client \
+        --name "Concourse UUA Client" \
+        --scope "" \
+        --authorities credhub.read,credhub.write \
+        --authorized_grant_types client_credentials,password,refresh_token \
+        --access_token_validity 3600 \
+        --refresh_token_validity 3600
+
+    scope: uaa.none
+    client_id: concourse_client
+    resource_ids: none
+    authorized_grant_types: refresh_token client_credentials password
+    autoapprove:
+    access_token_validity: 3600
+    refresh_token_validity: 3600
+    authorities: credhub.write credhub.read
+    name: Concourse UUA Client
+    required_user_groups:
+    lastmodified: 1507622062733
+    id: concourse_client
+```
+
+### Deploy Concourse
+
+```
+$ bosh -e sandbox -d concourse deploy concourse.yml \
+    -o ops-files/concourse-credhub.yml \
+    --vars-store _creds-concourse_credhub.yml \
+    -v CONCOURSE_NW_NAME=network-z1-only \
+    -v CONCOURSE_AZ_NAME=z1 \
+    -v CONCOURSE_INTERNAL_IP=10.0.100.11 \
+    -v CONCOURSE_EXTERNAL_IP=104.197.186.152 \
+    -v CONCOURSE_CREDHUB_MOUNT="/concourse" \
+    -v CREDHUB_URL="https://10.0.100.12:8844" \
+    --var-file=CREDHUB_CA_CERT=<(bosh int ./_creds-credhub.yml --path=/credhub-tls/ca)
+```
+
+If you want to deploy in one single VM for testing purpose:
+
+```
+$ bosh -e sandbox -d concourse deploy concourse-allinone.yml \
+    -o ops-files/concourse-allinone-credhub.yml \
+    --vars-store _creds-concourse_credhub.yml \
+    -v CONCOURSE_NW_NAME=network-z1-only \
+    -v CONCOURSE_AZ_NAME=z1 \
+    -v CONCOURSE_INTERNAL_IP=10.0.100.11 \
+    -v CONCOURSE_EXTERNAL_IP=104.197.186.152 \
+    -v CONCOURSE_CREDHUB_MOUNT="/concourse" \
+    -v CREDHUB_URL="https://10.0.100.12:8844" \
+    --var-file=CREDHUB_CA_CERT=<(bosh int ./_creds-credhub.yml --path=/credhub-tls/ca)
+```
+
+> Note: The `_creds-concourse_credhub.yml` has below credential values, please set them before running the command.
+
+```
+ui_password: 
+
+# Must be a 16 or 32 byte AES key
+encryption_key: 
+
+credhub_uaa_client_id: 
+credhub_uaa_client_secret: 
+```
+
+### Deploy Concourse Pinelines
+
+#### Populate Required Variables/Secrects
+
+Credential Lookup Rules:
+- /concourse/TEAM_NAME/PIPELINE_NAME/foo_param
+- /concourse/TEAM_NAME/foo_param
+
+Write secrets to Credhub using the following syntax:
+
+`$ credhub set --name="/concourse/<team-name>/<pipeline-name/<variable-name>" --type="<type>" --value="<variable-value>"`
+Or
+`$ credhub set --name="/concourse/<team-name>/<variable-name>" --type="<type>" --value="<variable-value>"`
+
+We create below values:
+```
+$ credhub login -s https://10.0.100.12:8844 --client-name concourse_client --client-secret=<PASSWD> --skip-tls-validation
+    Warning: The targeted TLS certificate has not been verified for this connection.
+    Warning: The --skip-tls-validation flag is deprecated. Please use --ca-cert instead.
+    password: *********
+    Setting the target url: https://10.0.100.12:8844
+    Login Successful
+
+$ credhub delete --name="/concourse/main/credhub-testing/my-secret"
+$ credhub set --name="/concourse/main/credhub-testing/my-secret" --type="value" --value="Hello World"
+$ credhub find --name-like 'my-secret'
+    credentials:
+    - name: /concourse/main/credhub-testing/my-secret
+    version_created_at: 2017-10-09T07:44:52Z
+```
+
+> Note: refer to [this](README-Credhub.md) for the context about Credhub URL and user `concourse_user`
+
+#### Deploy Sample Pipeline
+
+1. Sample Pipeline
+
+```
+$ vi misc/vault-testing-pipeline.yml
+
+jobs:
+- name: hello-world
+  plan:
+  - task: say-hello
+    params:
+      MY_SECRET: ((my-secret))
+    config:
+      platform: linux
+      image_resource:
+        type: docker-image
+        source:
+          repository: ubuntu
+      run:
+        path: bash
+        args:
+        - -c
+        - |
+          echo "MY_SECRET is ${MY_SECRET}"
+```
+
+2. Set Pipeline
+
+```
+$ fly -t bosh set-pipeline -p credhub-testing -c misc/vault-testing-pipeline.yml
+```
+
+3. Manually Trigger the "hello world" Job
+
+You should get:
+```
+say-hello
+Pulling ubuntu@sha256:2b9285d3e340ae9d4297f83fed6a9563493945935fc787e98cc32a69f5687641...
+sha256:2b9285d3e340ae9d4297f83fed6a9563493945935fc787e98cc32a69f5687641: Pulling from library/ubuntu
+...
+Successfully pulled ubuntu@sha256:2b9285d3e340ae9d4297f83fed6a9563493945935fc787e98cc32a69f5687641.
+
+MY_SECRET is Hello World
+```
+
+Done!
+
 
 
 ## Known Issues & Solutions

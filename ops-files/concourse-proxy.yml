@@ -1,0 +1,8 @@
+# Ref: https://bosh.io/jobs/groundcrew?source=github.com/concourse/concourse&version=3.5.0
+
+- type: replace
+  path: /instance_groups/name=worker/jobs/name=groundcrew/properties/garden?
+  value:
+    http_proxy_url: 
+    https_proxy_url: 
+    no_proxy: []

@@ -1,0 +1,125 @@
+---
+
+# Notes:
+# - Available ops files
+#   * ops-files/concourse-bbr.yml
+#   * ops-files/concourse-external-lb.yml
+#   * ops-files/concourse-vault-approle.yml
+#   * ops-files/concourse-vault-token.yml
+#   * ops-files/concourse-credhub.yml
+# - CLI:
+# $ bosh -e sandbox -d concourse deploy concourse-allinone.yml \
+#     -o ops-files/concourse-vault-approle.yml \
+#     --vars-store _creds-concourse.yml \
+#     -v CONCOURSE_NW_NAME=network-z1-only \
+#     -v CONCOURSE_AZ_NAME=z1 \
+#     -v CONCOURSE_INTERNAL_IP=10.0.100.11 \
+#     -v CONCOURSE_EXTERNAL_IP=104.197.186.152 \
+#     -v CONCOURSE_VAULT_MOUNT=/concourse \
+#     -v VAULT_ADDR=http://10.0.100.10:8200
+
+name: concourse
+
+releases:
+- name: concourse
+  version: 3.5.0
+  url: https://bosh.io/d/github.com/concourse/concourse?v=3.5.0
+  sha1: 65a974b3831bb9908661a5ffffbe456e10185149
+- name: garden-runc
+  version: 1.6.0
+  url: https://bosh.io/d/github.com/cloudfoundry/garden-runc-release?v=1.6.0
+  sha1: 58fbc64aff303e6d76899441241dd5dacef50cb7
+
+stemcells:
+- alias: trusty
+  os: ubuntu-trusty
+  version: latest
+
+instance_groups:
+- name: concourse
+  instances: 1
+  vm_type: small-30g
+  persistent_disk_type: hd5g
+  stemcell: trusty
+  azs: [((CONCOURSE_AZ_NAME))]
+  networks:
+  - name: ((CONCOURSE_NW_NAME))
+    static_ips: [((CONCOURSE_INTERNAL_IP))]
+    default: [dns, gateway]
+  - name: eip
+    static_ips: [((CONCOURSE_EXTERNAL_IP))]
+  jobs:
+  - name: atc
+    release: concourse
+    properties:
+      external_url: &external_url https://((CONCOURSE_EXTERNAL_IP))
+      basic_auth_username: admin
+      basic_auth_password: ((ui_password))
+      tls_cert: ((atc_ssl.certificate))
+      tls_key: ((atc_ssl.private_key))
+      bind_port: 80
+      tls_bind_port: 443
+      postgresql_database: &atc_db atc
+      encryption_key: ((encryption_key))
+      #old_encryption_key: ((old_encryption_key))
+      log_level: debug
+
+  - name: tsa
+    release: concourse
+    properties: {}
+
+
+  - name: postgresql
+    release: concourse
+    properties:
+      databases:
+      - name: *atc_db
+        role: atc
+        password: ((postgres_password))
+
+
+  - name: groundcrew
+    release: concourse
+    properties: {}
+  - name: baggageclaim
+    release: concourse
+    properties: {}
+  - name: garden
+    release: garden-runc
+    properties:
+      garden:
+        listen_network: tcp
+        listen_address: 0.0.0.0:7777
+
+update:
+  canaries: 1
+  max_in_flight: 1
+  serial: false
+  canary_watch_time: 1000-60000
+  update_watch_time: 1000-60000
+
+variables:
+- name: default_ca
+  type: certificate
+  options:
+    is_ca: true
+    common_name: ca
+- name: atc_ssl
+  type: certificate
+  options:
+    ca: default_ca
+    common_name: ((CONCOURSE_EXTERNAL_IP))
+    alternative_names: 
+    - ((CONCOURSE_INTERNAL_IP))
+- name: postgres_password
+  type: password
+- name: ui_password
+  type: password
+- name: encryption_key
+  type: password
+  options:
+    length: 16
+#- name: old_encryption_key
+#  type: password
+#  options:
+#    length: 16

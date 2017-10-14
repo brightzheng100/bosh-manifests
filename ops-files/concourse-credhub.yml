@@ -1,0 +1,14 @@
+# Ref: 
+# - https://bosh.io/jobs/atc?source=github.com/concourse/concourse&version=3.5.0#p=credhub
+# - https://github.com/starkandwayne/bucc/blob/develop/ops/4-concourse-credhub.yml
+
+- type: replace
+  path: /instance_groups/name=web/jobs/name=atc/properties/credhub?
+  value:
+    url: ((CREDHUB_URL))
+    path_prefix: ((CONCOURSE_CREDHUB_MOUNT))
+    client_id: ((credhub_uaa_client_id))
+    client_secret: ((credhub_uaa_client_secret))
+    tls:
+      ca_cert: ((CREDHUB_CA_CERT))
+      insecure_skip_verify: true
