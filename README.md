@@ -29,6 +29,7 @@ $ bosh create-env bosh-deployment/bosh.yml \
     --state=state.json \
     --vars-store=creds.yml \
     -o bosh-deployment/gcp/cpi.yml \
+    -o bosh-deployment/credhub.yml \
     -v director_name=bosh-gcp \
     -v internal_cidr=10.0.100.0/22 \
     -v internal_gw=10.0.100.1 \
@@ -40,6 +41,39 @@ $ bosh create-env bosh-deployment/bosh.yml \
     -v network=bosh-sandbox \
     -v subnetwork=bosh-releases
 ```
+
+> Note: you may add more features simply adding the corresponding ops files. For example:
+- Add credhub component: `-o credhub.yml`
+- Add UAA component: `-o uaa.yml`
+- Create jumpbox user and cert to SSH into BOSH: `-o jumpbox-user.yml`. 
+  `ssh jumpbox@10.0.100.6 -i <(bosh int creds.yml --path=/jumpbox_ssh/private_key)`
+- Forward syslog to external logging system: `-o syslog.yml`
+- etc.
+
+
+Below is an example:
+
+```
+$ bosh create-env bosh-deployment/bosh.yml \
+    --state=state.json \
+    --vars-store=creds.yml \
+    -o bosh-deployment/gcp/cpi.yml \
+    -o bosh-deployment/uaa.yml \
+    -o bosh-deployment/credhub.yml \
+    -o bosh-deployment/jumpbox-user.yml \
+    -v director_name=bosh-gcp \
+    -v internal_cidr=10.0.100.0/22 \
+    -v internal_gw=10.0.100.1 \
+    -v internal_ip=10.0.100.6 \
+    --var-file gcp_credentials_json=<CREDENTIAL JSON FILE> \
+    -v project_id=<PROJECT ID> \
+    -v zone=us-central1-a \
+    -v tags=[internal,bosh] \
+    -v network=bosh-sandbox \
+    -v subnetwork=bosh-releases
+```
+
+> Note: some ops files may have dependency issues. For example, you must put `uaa.yml` before `credhub.yml`.
 
 
 3. Alias BOSH Env
@@ -84,11 +118,14 @@ $ bosh -e sandbox upload-stemcell stemcells/light-bosh-stemcell-3421.11-google-k
 
 ## Completed BOSH Manifests & Howto Guide
 
-- [Vault](README-Vault.md#vault)
-- [Concourse](README-Concourse.md#concourse)
-
+- [Vault](README-Vault.md)
+- [CredHub](README-Credhub.md)
+- [Concourse](README-Concourse.md)
+- [Docker Registry](README-DockerRegistry.md)
+- [Minio](README-Minio.md)
 
 # Ref
 
 - https://github.com/cloudfoundry-community/vault-boshrelease
+- https://github.com/concourse/concourse-deployment
 - https://github.com/making/bosh-manifests
