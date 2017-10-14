@@ -1,0 +1,77 @@
+---
+
+# Notes:
+# - This is my cloud config for vSphere, for reference ONLY
+#
+# Parameters:
+#   DATACENTER_NAME
+#   CLUSTER_NAME
+#   RESOURCE_POOL
+#   NETWORK_CIDR: e.g. 10.115.220.0/24
+#   NETWORK_GW: e.g. 10.115.220.254
+#   NETWORK_DNS: e.g. 10.106.65.128,10.106.65.129
+#   NETWORK_RESERVED_IPS: e.g. 10.115.220.1-10.115.220.6,10.115.220.11,10.115.220.12
+#   NETWORK_STATIC_IPS: e.g. 10.115.220.7,10.115.220.10,10.115.220.13
+#   NETWORK_NAME_VSPHERE: vlan name in vsphere
+#   
+
+# Availability Zones
+azs:
+- name: z1
+  cloud_properties:
+    datacenters:
+    - name: ((DATACENTER_NAME))
+      clusters:
+      - {((CLUSTER_NAME)): {resource_pool: ((RESOURCE_POOL))}}
+
+# VM Types
+vm_types:
+- name: small
+  cloud_properties:
+    cpu: 2
+    ram: 1024
+    disk: 10_240
+- name: small-30g
+  cloud_properties:
+    cpu: 2
+    ram: 4096
+    disk: 30_240
+- name: medium
+  cloud_properties:
+    cpu: 4
+    ram: 4096
+    disk: 10_240
+
+# Disk Types
+disk_types:
+- name: hd5g
+  disk_size: 5000
+- name: hd10g
+  disk_size: 10000
+- name: hd20g
+  disk_size: 20000
+- name: hd30g
+  disk_size: 30000
+- name: hd50g
+  disk_size: 50000
+
+# Networks
+networks:
+- name: network-z1-only
+  type: manual
+  subnets:
+  - range:   ((NETWORK_CIDR))
+    gateway: ((NETWORK_GW))
+    dns:     [((NETWORK_DNS))]
+    azs:     [z1]
+    reserved: [((NETWORK_RESERVED_IPS))]
+    static: [((NETWORK_STATIC_IPS))]
+    cloud_properties:
+      name: ((NETWORK_NAME_VSPHERE))
+
+compilation:
+  workers: 2
+  reuse_compilation_vms: true
+  az: z1
+  vm_type: small
+  network: network-z1-only
