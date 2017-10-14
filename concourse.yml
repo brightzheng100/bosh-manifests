@@ -6,6 +6,7 @@
 #   * ops-files/concourse-external-lb.yml
 #   * ops-files/concourse-vault-approle.yml
 #   * ops-files/concourse-vault-token.yml
+#   * ops-files/concourse-credhub.yml
 # - CLI:
 # $ bosh -e sandbox -d concourse deploy concourse.yml \
 #     -o ops-files/concourse-vault-approle.yml \
@@ -21,9 +22,9 @@ name: concourse
 
 releases:
 - name: concourse
-  version: 3.4.1
-  url: https://bosh.io/d/github.com/concourse/concourse?v=3.4.1
-  sha1: b9c3cd85caccf0dae7406f8d7dfc237b4c698ce6
+  version: 3.5.0
+  url: https://bosh.io/d/github.com/concourse/concourse?v=3.5.0
+  sha1: 65a974b3831bb9908661a5ffffbe456e10185149
 - name: garden-runc
   version: 1.6.0
   url: https://bosh.io/d/github.com/cloudfoundry/garden-runc-release?v=1.6.0
@@ -43,6 +44,9 @@ instance_groups:
   networks:
   - name: ((CONCOURSE_NW_NAME))
     static_ips: [((CONCOURSE_INTERNAL_IP))]
+    default: [dns, gateway]
+  - name: eip
+    static_ips: [((CONCOURSE_EXTERNAL_IP))]
   jobs:
   - name: atc
     release: concourse
@@ -57,9 +61,11 @@ instance_groups:
       postgresql_database: &atc_db atc
       encryption_key: ((encryption_key))
       #old_encryption_key: ((old_encryption_key))
+      log_level: debug
   - name: tsa
     release: concourse
     properties: {}
+
 - name: db
   instances: 1
   vm_type: small
@@ -76,6 +82,7 @@ instance_groups:
       - name: *atc_db
         role: atc
         password: ((postgres_password))
+
 - name: worker
   instances: 1
   vm_type: small-30g
