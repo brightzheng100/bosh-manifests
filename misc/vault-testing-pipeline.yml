@@ -1,18 +1,27 @@
 ---
 
-# Demo pipeline to test whether Vault works or not
+# Demo pipeline to test whether Vault/Credhub works or not
 #
-# 1. Set variable to Vault
-# $ vault write concourse/main/vault-testing/my-secret value="Hello World"
-# $ vault read concourse/main/vault-testing/my-secret
+# 1. Set variable to Credential Management provider
+#
+# For Vault:
+# $ vault write concourse/main/cred-testing/my-secret value="Hello World"
+# $ vault read concourse/main/cred-testing/my-secret
 #     Key             	Value
 #     ---             	-----
 #     refresh_interval	768h0m0s
 #     value           	Hello World
+# 
+# For Credhub:
+# $ credhub set --name="/concourse/main/cred-testing/my-secret" --type="value" --value="Hello World"
+# $ credhub find --name-like 'my-secret'
+#     credentials:
+#     - name: /concourse/main/cred-testing/my-secret
+#     version_created_at: 2017-10-09T07:44:52Z
 #
 # 2. Set pipeline
-# $ fly -t bosh set-pipeline -p vault-testing -c misc/vault-testing-pipeline.yml
-# $ fly -t bosh unpause-pipeline -p vault-testing
+# $ fly -t bosh set-pipeline -p cred-testing -c misc/vault-testing-pipeline.yml
+# $ fly -t bosh unpause-pipeline -p cred-testing
 # 
 # 3. Manually trigger the "hello-world" job and one should see:
 #   MY_SECRET is Hello World
