@@ -1,0 +1,41 @@
+---
+name: minio
+
+releases:
+- name: minio
+  #url: file://((LOCAL_MINIO_RELEASE))
+  url: https://bosh.io/d/github.com/minio/minio-boshrelease?v=2017-09-29T19-16-56Z
+  sha1: e8b72803b430a262cac3e09bdf8a7dfeca0be3b8
+  version: latest
+
+stemcells:
+- alias: trusty
+  os: ubuntu-trusty
+  version: latest
+
+instance_groups:
+- name: minio
+  azs: [((MINIO_AZ_NAME))]
+  instances: 1
+  jobs:
+  - name: minio-server
+    release: minio
+    templates:
+    - name: minio-server
+    properties:
+      credential:
+        accesskey: ((accesskey))
+        secretkey: ((secretkey))
+      port: 80
+  networks:
+  - name: ((MINIO_NW_NAME))
+    static_ips: [((MINIO_STATIC_IP))]
+  vm_type: small
+  persistent_disk_type: hd10g
+  stemcell: trusty
+
+update:
+  canaries: 1
+  canary_watch_time: 1000-30000
+  update_watch_time: 1000-30000
+  max_in_flight: 10
