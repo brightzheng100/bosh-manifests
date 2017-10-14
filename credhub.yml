@@ -1,0 +1,134 @@
+---
+
+# Sample CLI (given BOSH env=sandbox):
+# ```
+# $ bosh -e sandbox -d credhub deploy credhub.yml \
+#     -v CREDHUB_AZ_NAME=z1 \
+#     -v CREDHUB_NW_NAME=network-z1-only \
+#     -v CREDHUB_INTERNAL_IP=10.0.100.12 \
+#     -v CREDHUB_EXTERNAL_IP=10.0.100.12 \
+#     -v CREDHUB_VM_TYPE=small \
+#     -v CREDHUB_DISK_TYPE=hd10g \
+#     -v UUA-URL="https://10.0.100.6:8443"
+# ```
+#
+# Ref:
+# - https://github.com/pivotal-cf/credhub-release
+# - https://github.com/cloudfoundry-incubator/credhub
+# - https://bosh.io/jobs/credhub?source=github.com/pivotal-cf/credhub-release&version=1.5.0
+
+name: credhub
+
+releases:
+- name: credhub
+  url: https://bosh.io/d/github.com/pivotal-cf/credhub-release?v=1.5.0
+  sha1: f965d47c261c9c554399ea02cf7ab343b7b7f843
+  version: 1.5.0
+- name: postgres
+  url: https://bosh.io/d/github.com/cloudfoundry/postgres-release?v=20
+  sha1: 3f378bcab294e20316171d4e656636df88763664
+  version: 20
+
+stemcells: 
+- alias: default 
+  os: ubuntu-trusty
+  version: latest
+
+instance_groups: 
+- name: credhub-with-postgres
+  instances: 1
+  vm_type: ((CREDHUB_VM_TYPE))
+  persistent_disk_type: ((CREDHUB_DISK_TYPE))
+  azs: [((CREDHUB_AZ_NAME))]
+  stemcell: default
+  networks:
+  - name: ((CREDHUB_NW_NAME))
+    static_ips: [((CREDHUB_INTERNAL_IP))]
+    default: [dns, gateway]
+  #- name: eip
+  #  static_ips: [((CREDHUB_EXTERNAL_IP))]
+
+  jobs:
+  - name: credhub
+    release: credhub
+    properties:
+      credhub:
+        tls: ((credhub-tls))
+        authentication:
+          uaa:
+            url: ((UUA-URL))
+            verification_key: ((uaa-jwt.public_key))
+            ca_certs:
+            - ((uaa-tls.ca)) 
+        data_storage:
+          type: postgres
+          username: admin
+          password: ((database-admin))
+          host: 127.0.0.1
+          port: 5432
+          database: credhub
+          require_tls: true
+          tls_ca: ((database-tls.ca))
+        encryption:
+          keys: 
+          - provider_name: int
+            encryption_password: ((credhub-encryption-password))
+            active: true
+          providers: 
+          - name: int
+            type: internal
+
+  - name: postgres
+    release: postgres
+    properties: 
+      databases:
+        address: 127.0.0.1
+        port: 5432
+        databases: 
+        - name: credhub
+        roles: 
+        - name: admin
+          password: ((database-admin))
+        tls: 
+          ca: ((database-tls.ca))
+          certificate: ((database-tls.certificate))
+          private_key: ((database-tls.private_key))
+
+
+variables:
+- name: credhub-encryption-password
+  type: password
+  options:
+    length: 40
+- name: credhub-ca
+  type: certificate
+  options:
+    is_ca: true
+    common_name: "CredHub CA"
+- name: credhub-tls
+  type: certificate
+  options:
+    ca: credhub-ca
+    common_name: ((CREDHUB_EXTERNAL_IP))
+    alternative_names:
+    - ((CREDHUB_EXTERNAL_IP))
+    - ((CREDHUB_INTERNAL_IP))
+    - 127.0.0.1
+- name: database-tls
+  type: certificate
+  options: 
+    ca: credhub-ca
+    common_name: ((CREDHUB_EXTERNAL_IP))
+    alternative_names:
+    - ((CREDHUB_EXTERNAL_IP))
+    - ((CREDHUB_INTERNAL_IP))
+    - 127.0.0.1
+- name: database-admin
+  type: password
+
+
+update:
+  canaries: 1
+  max_in_flight: 10
+  update_watch_time: 10000-120000
+  canary_watch_time: 10000-120000
