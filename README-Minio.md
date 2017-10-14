@@ -14,12 +14,11 @@ $ bosh -e sandbox -d minio deploy minio.yml \
 
 ## Access
 
-URL for browser: 10.115.220.10:9000
+URL for browser: 10.0.100.14:9000
 
 Instll `mc`, the Minio CLI and:
 ```
-$ mc config host add minio http://10.115.220.10:9000 admin P@ssw0rd123 S3v4
+$ mc config host add minio http://10.0.100.14:9000 admin <PASSWD> S3v4
 $ mc mb minio/docker-images
+$ mc ls minio/docker-images
 ```
-
-Then upload the busybox.tar to this foler.
