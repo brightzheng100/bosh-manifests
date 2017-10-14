@@ -1,0 +1,61 @@
+---
+
+# Ref:
+# - https://github.com/cloudfoundry-community/docker-registry-boshrelease
+# - https://bosh.io/releases/github.com/cloudfoundry-community/docker-registry-boshrelease?version=3.2.3
+
+name: docker-registry
+
+releases:
+- name: docker-registry
+  version: 3.2.3
+  #url: file://((LOCAL_REGISTRY_RELEASE))
+  url: https://bosh.io/d/github.com/cloudfoundry-community/docker-registry-boshrelease?v=3.2.3
+  sha1: e725643a7c9533a0f34edef69c8e0a51da2cc0ff
+
+stemcells:
+- alias: trusty
+  os: ubuntu-trusty
+  version: latest
+  
+# These settings are defined in cloud-config
+instance_groups:
+- name: docker-registry
+  instances: 1
+  vm_type: small
+  persistent_disk_type: hd10g
+  stemcell: trusty
+  vm_extensions: []
+  azs: [((REGISTRY_AZ_NAME))]
+  networks:
+  - name: ((REGISTRY_NW_NAME))
+    static_ips: [((REGISTRY_INTERNAL_IP))]
+    default: [dns, gateway]
+  - name: eip
+    static_ips: [((REGISTRY_EXTERNAL_IP))]
+  jobs:
+  - name: registry
+    release: docker-registry
+  - name: proxy
+    release: docker-registry
+  - name: cache
+    release: docker-registry
+  properties:
+    docker:
+      cache:
+        host: 127.0.0.1
+        redis:
+          maxmemory: "2g"
+      proxy:
+        #auth_basic:
+        #  admin: ((REGISTRY_ADMIN_PWD))
+        ssl:
+          cert: ((REGISTRY_CERT))
+          key: ((REGISTRY_KEY))
+
+update:
+  canaries: 1
+  max_in_flight: 50
+  serial: false
+  canary_watch_time: 1000-60000
+  update_watch_time: 1000-60000
