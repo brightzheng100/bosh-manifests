@@ -1,0 +1,56 @@
+---
+
+# Availability Zones
+azs:
+- name: z1
+- name: z2
+- name: z3
+
+# VM Types
+vm_types:
+- name: small
+  disk_size: 2048
+- name: small-30g
+  disk_size: 10_024
+- name: medium
+  disk_size: 15_048
+- name: large
+  disk_size: 15_048
+- name: xlarge
+  disk_size: 20_024
+
+# Disk Types
+disk_types:
+- name: hd5g
+  disk_size: 5000
+- name: hd10g
+  disk_size: 10000
+- name: hd20g
+  disk_size: 20000
+- name: hd30g
+  disk_size: 30000
+- name: hd50g
+  disk_size: 50000
+- name: hd100g
+  disk_size: 100000
+
+# Networks
+networks:
+- name: network-z1-only
+  type: manual
+  subnets:
+  - azs: [z1]
+    range: 10.244.0.0/24
+    gateway: 10.244.0.1
+    dns:     [8.8.8.8, 8.8.4.4]
+    reserved: [10.244.0.1-10.244.0.5]
+    static: [10.244.0.6 - 10.244.0.30]
+    cloud_properties:
+      tags: [internal, bosh-lite, bosh-releases]
+
+compilation:
+  az: z1
+  network: network-z1-only
+  reuse_compilation_vms: true
+  vm_type: small
+  workers: 4
