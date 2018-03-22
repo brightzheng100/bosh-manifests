@@ -21,13 +21,15 @@ name: credhub
 
 releases:
 - name: credhub
-  url: https://bosh.io/d/github.com/pivotal-cf/credhub-release?v=1.5.0
-  sha1: f965d47c261c9c554399ea02cf7ab343b7b7f843
-  version: 1.5.0
+  url: https://bosh.io/d/github.com/pivotal-cf/credhub-release?v=1.7.2
+  #url: file://./releases/credhub-release-1.6.1.tgz
+  sha1: 6bff25b28dc5e099cb890b78eb727ebe7e52c909
+  version: 1.7.2
 - name: postgres
-  url: https://bosh.io/d/github.com/cloudfoundry/postgres-release?v=20
-  sha1: 3f378bcab294e20316171d4e656636df88763664
-  version: 20
+  url: https://bosh.io/d/github.com/cloudfoundry/postgres-release?v=22
+  #url: file://./releases/postgres-release-20.tgz
+  sha1: 86a1333122e9cdd051551c83ec26d36f6e325d6c
+  version: 22
 
 stemcells: 
 - alias: default 
